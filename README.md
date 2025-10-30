@@ -11,13 +11,14 @@ Visit the game at: `https://[your-username].github.io/[your-repo-name]/`
 Brain Run is an educational game created for the **Night of Neuroscience** event at The Tech Interactive (November 14, 2025). 
 
 ### Features:
-- ✅ 4 complete levels with progressive difficulty
+- ✅ 8 complete levels with progressive difficulty
 - ✅ 86+ scientifically verified neuroscience facts
 - ✅ Anatomically detailed brain character
 - ✅ Professional platformer mechanics (double jump, coyote time, jump buffering)
 - ✅ Reflection questions after each level
 - ✅ Leaderboard system
 - ✅ Perfect for grades 4-12
+- ✅ Balanced difficulty curve - challenging but fair until level 8!
 
 ## 🕹️ Controls
 

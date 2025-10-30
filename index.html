@@ -91,7 +91,7 @@
         <div id="menu-screen" class="screen">
             <div class="emoji">🧠</div>
             <h1>Brain Run</h1>
-            <p style="color: #666; margin: 20px 0;">Enhanced Edition with 4 Complete Levels!</p>
+            <p style="color: #666; margin: 20px 0;">Enhanced Edition with 8 Complete Levels!</p>
             <div class="controls-hint">
                 <strong>Controls:</strong> Arrow Keys to Move & Jump<br>
                 <strong>Special:</strong> Double Jump, Coyote Time, Jump Buffering
@@ -178,11 +178,43 @@
                 description: "Navigate the maze"
             },
             { 
-                name: "Level 4: Reward Center", 
-                bgColor: '#191970', 
-                neurons: 20, 
+                name: "Level 4: Motor Cortex", 
+                bgColor: '#FFB347', 
+                neurons: 16, 
+                distractions: 9,
+                worldWidth: 4400,
+                description: "Master movement"
+            },
+            { 
+                name: "Level 5: Temporal Lobe", 
+                bgColor: '#E6E6FA', 
+                neurons: 18, 
                 distractions: 10,
                 worldWidth: 4800,
+                description: "Process and remember"
+            },
+            { 
+                name: "Level 6: Cerebellum", 
+                bgColor: '#F0E68C', 
+                neurons: 20, 
+                distractions: 11,
+                worldWidth: 5200,
+                description: "Perfect your balance"
+            },
+            { 
+                name: "Level 7: Limbic System", 
+                bgColor: '#FFA07A', 
+                neurons: 22, 
+                distractions: 12,
+                worldWidth: 5600,
+                description: "Master your emotions"
+            },
+            { 
+                name: "Level 8: Reward Center", 
+                bgColor: '#191970', 
+                neurons: 25, 
+                distractions: 15,
+                worldWidth: 6400,
                 finalLevel: true,
                 description: "Ultimate challenge"
             }
@@ -192,6 +224,10 @@
             "What fires up your teaching brain?",
             "How do you manage planning and creativity?",
             "What memories make you the best teacher?",
+            "How do you coordinate complex lessons?",
+            "What sounds and words inspire your students?",
+            "How do you balance multiple teaching demands?",
+            "What emotions drive your passion for teaching?",
             "What rewards keep you motivated?"
         ];
 
@@ -619,11 +655,56 @@
                         this.platforms.create(200 + i * 260, 
                             350 + (i % 3) * 80, 'platform');
                     }
-                } else {
-                    // Final challenge
+                } else if (this.levelIndex === 3) {
+                    // Level 4: Motor Cortex - rhythmic pattern (moderate)
+                    for (let i = 0; i < 16; i++) {
+                        this.platforms.create(200 + i * 280, 
+                            400 - Math.sin(i * 0.8) * 80, 'platform').setScale(0.8, 1);
+                    }
+                    // Add a few mid-air platforms for variety
+                    this.platforms.create(800, 250, 'platform').setScale(0.6, 1);
+                    this.platforms.create(1400, 200, 'platform').setScale(0.6, 1);
+                    this.platforms.create(2000, 230, 'platform').setScale(0.6, 1);
+                } else if (this.levelIndex === 4) {
+                    // Level 5: Temporal Lobe - wave pattern (moderate+)
                     for (let i = 0; i < 18; i++) {
+                        this.platforms.create(200 + i * 270, 
+                            350 + Math.sin(i * 0.6) * 90, 'platform').setScale(0.75, 1);
+                    }
+                    // Add stepping stones
+                    for (let i = 0; i < 5; i++) {
+                        this.platforms.create(600 + i * 700, 200, 'platform').setScale(0.5, 1);
+                    }
+                } else if (this.levelIndex === 5) {
+                    // Level 6: Cerebellum - balanced challenge (harder)
+                    for (let i = 0; i < 20; i++) {
                         this.platforms.create(200 + i * 260, 
+                            300 + Math.cos(i * 0.5) * 100, 'platform').setScale(0.7, 1);
+                    }
+                    // Add some challenging gaps with small platforms
+                    for (let i = 0; i < 8; i++) {
+                        this.platforms.create(400 + i * 600, 150, 'platform').setScale(0.4, 1);
+                    }
+                } else if (this.levelIndex === 6) {
+                    // Level 7: Limbic System - emotional rollercoaster (harder)
+                    for (let i = 0; i < 22; i++) {
+                        const amplitude = i < 11 ? 120 : 140; // Gets harder halfway through
+                        this.platforms.create(200 + i * 250, 
+                            350 + Math.sin(i * 0.7) * amplitude, 'platform').setScale(0.65, 1);
+                    }
+                    // Add vertical challenge platforms
+                    this.platforms.create(1200, 150, 'platform').setScale(0.5, 1);
+                    this.platforms.create(2800, 120, 'platform').setScale(0.5, 1);
+                    this.platforms.create(4200, 140, 'platform').setScale(0.5, 1);
+                } else {
+                    // Level 8: Final challenge - HARDEST
+                    for (let i = 0; i < 25; i++) {
+                        this.platforms.create(200 + i * 250, 
                             200 + Math.sin(i * 0.5) * 150, 'platform').setScale(0.6, 1);
+                    }
+                    // Add extremely challenging mid-air platforms
+                    for (let i = 0; i < 10; i++) {
+                        this.platforms.create(500 + i * 550, 100 + (i % 2) * 80, 'platform').setScale(0.35, 1);
                     }
                 }
             }
