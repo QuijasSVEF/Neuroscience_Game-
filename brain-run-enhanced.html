@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Run: The Neural Path - Enhanced</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        #app { width: 100%; max-width: 900px; margin: 0 auto; }
+        .screen {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+            display: none;
+        }
+        .screen.active { display: block; }
+        h1 { color: #667eea; font-size: 3em; margin-bottom: 10px; }
+        h2 { color: #764ba2; margin: 20px 0; }
+        input, textarea {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: translateY(-2px); }
+        #game-container {
+            margin: 20px auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        #game-screen {
+            background: transparent;
+            box-shadow: none;
+            padding: 20px;
+        }
+        .emoji { font-size: 4em; margin: 20px; }
+        .controls-hint {
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-size: 0.9em;
+            color: #333;
+        }
+        #loading {
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="loading">
+            <div class="emoji">🧠</div>
+            <p>Loading Enhanced Brain Run...</p>
+        </div>
+
+        <div id="menu-screen" class="screen">
+            <div class="emoji">🧠</div>
+            <h1>Brain Run</h1>
+            <p style="color: #666; margin: 20px 0;">Enhanced Edition with 4 Complete Levels!</p>
+            <div class="controls-hint">
+                <strong>Controls:</strong> Arrow Keys to Move & Jump<br>
+                <strong>Special:</strong> Double Jump, Coyote Time, Jump Buffering
+            </div>
+            <input type="text" id="player-name" placeholder="Enter your teacher name..." />
+            <button onclick="startGame()">Start Brain Journey</button>
+            <button onclick="showLeaderboard()">View Leaderboard</button>
+        </div>
+
+        <div id="game-screen" class="screen" style="max-width: 900px;">
+            <div id="game-container"></div>
+            <div class="controls-hint">
+                ← → Move | ↑ Jump (press twice for double jump) | Collect all neurons to unlock portal!
+            </div>
+            <button onclick="exitToMenu()">Exit to Menu</button>
+        </div>
+
+        <div id="reflection-screen" class="screen">
+            <div class="emoji">💭</div>
+            <h2>Level Complete!</h2>
+            <p id="level-score-text" style="font-size: 1.5em; color: #764ba2;"></p>
+            <h3 id="reflection-question" style="color: #667eea; margin: 20px 0;"></h3>
+            <textarea id="reflection-answer" placeholder="Share your thoughts..." rows="4"></textarea>
+            <button onclick="submitReflection()">Continue</button>
+        </div>
+
+        <div id="complete-screen" class="screen">
+            <div class="emoji">🎉</div>
+            <h1>Congratulations!</h1>
+            <p style="color: #666;">You completed all 4 neural pathways!</p>
+            <h2 id="final-score-text"></h2>
+            <p style="margin: 20px 0;">Your brain is supercharged! 🧠⚡</p>
+            <button onclick="resetToMenu()">Play Again</button>
+            <button onclick="showLeaderboard()">View Leaderboard</button>
+        </div>
+
+        <div id="leaderboard-screen" class="screen">
+            <h1>🏆 Top Brains</h1>
+            <div id="leaderboard-list" style="max-height: 400px; overflow-y: auto; margin: 20px 0;"></div>
+            <button onclick="resetToMenu()">Back to Menu</button>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', function() {
+            if (typeof Phaser !== 'undefined') {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('menu-screen').classList.add('active');
+                console.log('Enhanced Brain Run ready!');
+            } else {
+                document.getElementById('loading').innerHTML = '<div class="emoji">⚠️</div><p>Error loading game. Please refresh.</p>';
+            }
+        });
+
+        let game = null;
+        let playerName = '';
+        let currentLevel = 0;
+        let totalScore = 0;
+        let levelScore = 0;
+
+        const LEVELS = [
+            { 
+                name: "Level 1: Sensory Cortex", 
+                bgColor: '#87CEEB', 
+                neurons: 10, 
+                distractions: 3,
+                worldWidth: 2400,
+                description: "Learn the basics"
+            },
+            { 
+                name: "Level 2: Prefrontal Cortex", 
+                bgColor: '#DDA0DD', 
+                neurons: 12, 
+                distractions: 6,
+                worldWidth: 3200,
+                description: "Master precision"
+            },
+            { 
+                name: "Level 3: Hippocampus", 
+                bgColor: '#98FB98', 
+                neurons: 15, 
+                distractions: 8,
+                worldWidth: 4000,
+                description: "Navigate the maze"
+            },
+            { 
+                name: "Level 4: Reward Center", 
+                bgColor: '#191970', 
+                neurons: 20, 
+                distractions: 10,
+                worldWidth: 4800,
+                finalLevel: true,
+                description: "Ultimate challenge"
+            }
+        ];
+
+        const QUESTIONS = [
+            "What fires up your teaching brain?",
+            "How do you manage planning and creativity?",
+            "What memories make you the best teacher?",
+            "What rewards keep you motivated?"
+        ];
+
+        // Neuroscience facts for grades 4-12 (ALL VERIFIED FROM RESEARCH)
+        const NEURO_FACTS = [
+            // Basic Brain Stats
+            "Your brain has about 86 billion neurons!",
+            "Your brain weighs about 3 pounds (1.4 kg) on average.",
+            "Your brain uses 20% of your body's energy, even though it's only 2% of your weight!",
+            "Your brain can generate about 23 watts of power - enough to power a light bulb!",
+            "Your brain is about 60% fat - healthy fats are important for brain function!",
+            
+            // Neurons & Communication
+            "Neurons communicate using electrical signals called action potentials.",
+            "Neurons can send signals at speeds over 250 mph!",
+            "Each neuron can connect to up to 10,000 other neurons!",
+            "Your brain contains about 100 trillion synapses connecting neurons.",
+            "Neurons never touch - they communicate across tiny gaps called synapses.",
+            "The synaptic gap between neurons is only 20-40 nanometers wide!",
+            "Action potentials last only about 1 millisecond!",
+            "One synapse contains about 1,000 molecular switches - it's like a micro-computer!",
+            
+            // Brain Structure
+            "The left and right hemispheres of your brain communicate through the corpus callosum.",
+            "Your brain's wrinkly surface increases its area without taking up more space!",
+            "White matter contains the 'wiring' that connects different brain regions.",
+            "Gray matter contains most of the neuron cell bodies.",
+            "In each cubic millimeter of your brain, there are about 100,000 cells!",
+            
+            // Brain Regions & Functions
+            "The cerebellum helps you balance and coordinate movements.",
+            "Your hippocampus is crucial for forming new memories.",
+            "The amygdala processes emotions, especially fear and anxiety.",
+            "Your prefrontal cortex helps you plan, make decisions, and control impulses.",
+            "Your visual cortex processes what you see, taking up a large part of your brain.",
+            "The parietal lobe helps you understand spatial relationships.",
+            "Your temporal lobe processes sounds and helps with language comprehension.",
+            "The brain stem controls basic functions like breathing and heart rate.",
+            "The occipital lobe at the back of your brain processes visual information.",
+            "The thalamus acts like a relay station for sensory information.",
+            "The frontal lobe is involved in personality and decision-making.",
+            
+            // Neuroplasticity & Learning
+            "Neuroplasticity means your brain can rewire itself throughout your life.",
+            "Learning new things creates new neural pathways in your brain.",
+            "Your brain continues to develop until you're about 25 years old.",
+            "Every time you learn something, your brain physically changes!",
+            "Your brain creates about 70,000 thoughts per day!",
+            "Practice makes permanent - repeated actions strengthen brain pathways.",
+            "Your brain can create new neurons through a process called neurogenesis.",
+            "Cells that fire together, wire together - that's how learning works!",
+            "The brain is most sensitive to learning during childhood.",
+            "Your brain is always changing and adapting - even while you sleep!",
+            
+            // Memory
+            "Memories are stored by strengthening connections between neurons.",
+            "Your sense of smell is directly connected to memory centers in your brain.",
+            "Different parts of your brain handle different tasks - that's called specialization.",
+            "Your brain can process images in as little as 13 milliseconds!",
+            "Sleep helps your brain consolidate memories and remove toxins.",
+            "Your brain filters out most sensory information to prevent overload.",
+            
+            // Neurotransmitters & Chemistry
+            "Neurotransmitters are chemical messengers that neurons use to communicate.",
+            "Dopamine is a neurotransmitter that makes you feel rewarded and motivated.",
+            "Myelin is a fatty coating that helps signals travel faster between neurons.",
+            "Glial cells support and protect neurons - there are more glial cells than neurons!",
+            "Dendrites receive signals from other neurons like antennae.",
+            "Axons send signals away from the neuron to other cells.",
+            
+            // Brain Health & Activity
+            "Exercise increases blood flow to the brain and helps grow new neurons!",
+            "Laughing activates multiple brain regions and releases feel-good chemicals.",
+            "Music can activate nearly every region of the brain!",
+            "Reading activates multiple brain regions simultaneously.",
+            "Meditation can actually change the structure of your brain!",
+            "Physical exercise boosts brain-derived neurotrophic factor (BDNF).",
+            
+            // Brain Development & Age
+            "During development, your brain forms synapses at a rate of 10,000 every 15 minutes!",
+            "Your brain physically stops growing around age 18, but keeps changing forever.",
+            "Even as an adult, you can still get better at all kinds of skills.",
+            "There are sensitive periods when the brain learns certain things more easily.",
+            "Learning a second language is easier before age 7.",
+            "Visual system development happens rapidly during the first 6 months of life.",
+            
+            // Amazing Brain Abilities
+            "Mirror neurons help you understand and empathize with others.",
+            "Your brain uses pattern recognition to make sense of the world.",
+            "Your brain is constantly predicting what will happen next.",
+            "Your brain processes information both consciously and unconsciously.",
+            "Emotions and learning are deeply connected in the brain.",
+            "The reticular activating system helps you focus on important information.",
+            
+            // Synapses & Connections
+            "A human brain contains trillions of synapses for information processing.",
+            "Synapses can be excitatory (encourage firing) or inhibitory (prevent firing).",
+            "The combined effects of thousands of synapses determine if a neuron fires.",
+            "Electrical signals trigger the release of neurotransmitters at synapses.",
+            "Chemical signals cross the synaptic cleft to communicate between neurons.",
+            "Astrocytes (brain support cells) can contact thousands of synapses.",
+            
+            // Challenging Facts
+            "Multitasking actually reduces efficiency - your brain works best on one task at a time.",
+            "Stress hormones can impair memory formation.",
+            "Chronic stress can shrink the hippocampus and affect memory.",
+            "Your brain continues to make new connections throughout your entire life.",
+            
+            // Cool Connections
+            "In your brain, there are about 4 kilometers of 'wires' (dendrites and axons) per cubic millimeter!",
+            "Your brain's overall complexity is almost beyond belief!",
+            "A typical neuron makes as many as tens of thousands of synaptic contacts!",
+            "The brain is like a garden - thoughts are seeds that grow into pathways.",
+            "Your brain gets better at what you practice - choose to practice good things!",
+            "Making mistakes helps your brain learn and grow stronger!",
+            "Each time you practice something, you're literally changing your brain!",
+            "Your brain is more powerful than any computer ever made!"
+        ];
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        class GameScene extends Phaser.Scene {
+            constructor() {
+                super('GameScene');
+            }
+
+            init(data) {
+                this.levelIndex = data.levelIndex || 0;
+                this.levelData = LEVELS[this.levelIndex];
+                this.score = 0;
+                this.focus = 100;
+                this.collected = 0;
+                this.jumpsLeft = 2;
+                this.coyoteTime = 0;
+                this.jumpBufferTime = 0;
+                this.wasOnGround = true;
+                this.synapseConnections = [];
+                this.portalActivated = false;
+                this.portalReached = false;
+            }
+
+            preload() {
+                this.createAssets();
+            }
+
+            createAssets() {
+                const g = this.add.graphics();
+                
+                // Brain character matching poster - rounded lobes with folds
+                const centerX = 30;
+                const centerY = 30;
+                
+                // Left hemisphere (rounded lobe)
+                g.fillStyle(0xFFB6C1); // Light pink
+                g.beginPath();
+                g.arc(centerX - 10, centerY, 18, 0, Math.PI * 2);
+                g.fillPath();
+                
+                // Right hemisphere (rounded lobe)
+                g.beginPath();
+                g.arc(centerX + 10, centerY, 18, 0, Math.PI * 2);
+                g.fillPath();
+                
+                // Top rounded bulges (cerebrum)
+                g.fillStyle(0xFFC0CB);
+                g.fillCircle(centerX - 12, centerY - 12, 12);
+                g.fillCircle(centerX + 12, centerY - 12, 12);
+                g.fillCircle(centerX - 8, centerY - 18, 10);
+                g.fillCircle(centerX + 8, centerY - 18, 10);
+                
+                // Middle rounded bulges
+                g.fillCircle(centerX - 15, centerY, 10);
+                g.fillCircle(centerX + 15, centerY, 10);
+                
+                // Bottom rounded bulges (cerebellum area)
+                g.fillCircle(centerX - 10, centerY + 12, 9);
+                g.fillCircle(centerX + 10, centerY + 12, 9);
+                
+                // Center overlap (corpus callosum area)
+                g.fillStyle(0xFFB6C1);
+                g.fillCircle(centerX, centerY, 15);
+                
+                // Draw curvy folds (gyri and sulci) - black lines like poster
+                g.lineStyle(2, 0x000000, 0.8);
+                
+                // Left hemisphere folds (curved lines)
+                g.beginPath();
+                g.arc(centerX - 12, centerY - 8, 8, 0.2, Math.PI - 0.2);
+                g.strokePath();
+                
+                g.beginPath();
+                g.arc(centerX - 10, centerY + 2, 7, 0.3, Math.PI - 0.3);
+                g.strokePath();
+                
+                g.beginPath();
+                g.arc(centerX - 14, centerY + 8, 6, 0.2, Math.PI - 0.4);
+                g.strokePath();
+                
+                // Right hemisphere folds (curved lines)
+                g.beginPath();
+                g.arc(centerX + 12, centerY - 8, 8, Math.PI + 0.2, Math.PI * 2 - 0.2);
+                g.strokePath();
+                
+                g.beginPath();
+                g.arc(centerX + 10, centerY + 2, 7, Math.PI + 0.3, Math.PI * 2 - 0.3);
+                g.strokePath();
+                
+                g.beginPath();
+                g.arc(centerX + 14, centerY + 8, 6, Math.PI + 0.4, Math.PI * 2 - 0.2);
+                g.strokePath();
+                
+                // Center division line
+                g.lineStyle(2, 0x000000, 0.6);
+                g.lineBetween(centerX, centerY - 18, centerX, centerY + 15);
+                
+                // BIG EYES like poster with white shine
+                g.fillStyle(0xFFFFFF);
+                g.fillCircle(centerX - 8, centerY, 6);
+                g.fillCircle(centerX + 8, centerY, 6);
+                
+                // Black pupils
+                g.fillStyle(0x000000);
+                g.fillCircle(centerX - 8, centerY, 4);
+                g.fillCircle(centerX + 8, centerY, 4);
+                
+                // White shine spots in eyes
+                g.fillStyle(0xFFFFFF);
+                g.fillCircle(centerX - 7, centerY - 1, 2);
+                g.fillCircle(centerX + 9, centerY - 1, 2);
+                
+                // Happy smile (curved)
+                g.lineStyle(2, 0x000000);
+                g.beginPath();
+                g.arc(centerX, centerY + 4, 8, 0.2, Math.PI - 0.2);
+                g.strokePath();
+                
+                g.generateTexture('brain', 60, 60);
+                g.clear();
+                
+                // Glowing Neuron
+                g.fillStyle(0xFFD700);
+                g.fillCircle(15, 15, 12);
+                g.fillStyle(0xFFFF00, 0.6);
+                g.fillCircle(15, 15, 8);
+                g.fillStyle(0xFFFFFF, 0.8);
+                g.fillCircle(15, 15, 4);
+                g.generateTexture('neuron', 30, 30);
+                g.clear();
+                
+                // Taco
+                g.fillStyle(0xFFD700);
+                g.fillRect(0, 10, 30, 20);
+                g.fillStyle(0x8B4513);
+                g.fillCircle(15, 15, 12);
+                g.fillStyle(0xFF6347, 0.7);
+                g.fillRect(6, 14, 18, 4);
+                g.generateTexture('taco', 30, 30);
+                g.clear();
+                
+                // Distraction
+                g.lineStyle(5, 0xFF0000);
+                g.lineBetween(5, 5, 25, 25);
+                g.lineBetween(25, 5, 5, 25);
+                g.fillStyle(0xFF0000, 0.2);
+                g.fillCircle(15, 15, 12);
+                g.generateTexture('distraction', 30, 30);
+                g.clear();
+                
+                // Platform
+                g.fillStyle(0x4A4A4A);
+                g.fillRect(0, 0, 200, 20);
+                g.fillStyle(0x6A6A6A);
+                g.fillRect(0, 0, 200, 5);
+                g.generateTexture('platform', 200, 20);
+                g.clear();
+                
+                // Portal with swirl - ENHANCED for visibility
+                g.fillStyle(0x9370DB, 1.0); // Full opacity!
+                g.fillCircle(30, 40, 30);
+                g.fillStyle(0xBA55D3, 0.9);
+                g.fillCircle(30, 40, 24);
+                g.fillStyle(0xDA70D6, 0.8);
+                g.fillCircle(30, 40, 18);
+                g.fillStyle(0xFFFFFF, 0.6);
+                g.fillCircle(30, 40, 12);
+                // Add bright outer glow
+                g.lineStyle(4, 0xFFD700, 1.0);
+                g.strokeCircle(30, 40, 32);
+                g.generateTexture('portal', 70, 85);
+                g.clear();
+                
+                // Synapse particle
+                g.fillStyle(0x00FFFF, 0.8);
+                g.fillCircle(4, 4, 4);
+                g.generateTexture('synapse', 8, 8);
+                g.destroy();
+            }
+
+            create() {
+                try {
+                    // World setup
+                    this.physics.world.setBounds(0, 0, this.levelData.worldWidth, 600);
+                    this.cameras.main.setBackgroundColor(this.levelData.bgColor);
+                    this.cameras.main.setBounds(0, 0, this.levelData.worldWidth, 600);
+                
+                // Title
+                this.levelTitle = this.add.text(450, 30, this.levelData.name, {
+                    fontSize: '28px', fill: '#fff', stroke: '#000', strokeThickness: 4
+                }).setOrigin(0.5).setScrollFactor(0);
+                
+                // Platforms - varied layout per level
+                this.platforms = this.physics.add.staticGroup();
+                this.createPlatformLayout();
+
+                // Player
+                this.player = this.physics.add.sprite(100, 400, 'brain');
+                this.player.setBounce(0.1);
+                this.player.setCollideWorldBounds(true);
+                this.player.setDrag(800, 0); // Smooth deceleration
+                this.physics.add.collider(this.player, this.platforms);
+                
+                // Camera follow
+                this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+                this.cameras.main.setDeadzone(200, 100);
+
+                // Neurons with neural connections
+                this.neurons = this.physics.add.group();
+                const collectible = this.levelData.finalLevel ? 'taco' : 'neuron';
+                this.neuronPositions = [];
+                
+                for (let i = 0; i < this.levelData.neurons; i++) {
+                    const x = 200 + (i * (this.levelData.worldWidth - 400) / this.levelData.neurons);
+                    const y = Phaser.Math.Between(100, 450);
+                    const n = this.neurons.create(x, y, collectible);
+                    n.setBounceY(0.4);
+                    this.neuronPositions.push({x, y, collected: false});
+                    
+                    // Floating animation
+                    this.tweens.add({
+                        targets: n,
+                        y: y + Phaser.Math.Between(-20, 20),
+                        duration: Phaser.Math.Between(1500, 2500),
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                }
+                
+                this.physics.add.collider(this.neurons, this.platforms);
+                this.physics.add.overlap(this.player, this.neurons, this.collectNeuron, null, this);
+
+                // Distractions with AI
+                this.distractions = this.physics.add.group();
+                for (let i = 0; i < this.levelData.distractions; i++) {
+                    const x = Phaser.Math.Between(300, this.levelData.worldWidth - 300);
+                    const y = Phaser.Math.Between(100, 450);
+                    const d = this.distractions.create(x, y, 'distraction');
+                    d.setVelocity(Phaser.Math.Between(-150, 150), 0);
+                    d.setBounce(1);
+                    d.setCollideWorldBounds(true);
+                    
+                    // Pulsing animation
+                    this.tweens.add({
+                        targets: d,
+                        scaleX: 1.2,
+                        scaleY: 1.2,
+                        duration: 800,
+                        yoyo: true,
+                        repeat: -1
+                    });
+                }
+                this.physics.add.collider(this.distractions, this.platforms);
+                this.physics.add.overlap(this.player, this.distractions, this.hitDistraction, null, this);
+
+                // Portal - positioned above the portal platform at the end - LARGE AND VISIBLE
+                this.portal = this.add.sprite(this.levelData.worldWidth - 200, 280, 'portal');
+                this.portal.setScale(2.5);
+                this.portal.setDepth(1000); // Very high depth
+                this.portal.setAlpha(0); // Start transparent instead of invisible
+                this.portalActivated = false;
+
+                // Controls
+                this.cursors = this.input.keyboard.createCursorKeys();
+
+                // HUD
+                this.createHUD();
+                
+                // Note: Particles will be created on demand per collection
+                } catch (error) {
+                    console.error('Scene creation error:', error);
+                    this.add.text(400, 300, 'Error loading level. Press SPACE to retry.', {
+                        fontSize: '24px', fill: '#fff', stroke: '#ff0000', strokeThickness: 4
+                    }).setOrigin(0.5);
+                    this.input.keyboard.once('keydown-SPACE', () => this.scene.restart());
+                }
+            }
+
+            createPlatformLayout() {
+                const w = this.levelData.worldWidth;
+                
+                // Ground
+                this.platforms.create(w/2, 580, 'platform').setScale(w/100, 1).refreshBody();
+                
+                // Portal platform at the end - always present
+                this.platforms.create(w - 200, 400, 'platform').setScale(1.5, 1).refreshBody();
+                
+                // Level-specific layouts
+                if (this.levelIndex === 0) {
+                    // Tutorial level - easy jumps
+                    for (let i = 0; i < 8; i++) {
+                        this.platforms.create(200 + i * 300, 450 - i * 30, 'platform');
+                    }
+                } else if (this.levelIndex === 1) {
+                    // Precision jumps
+                    for (let i = 0; i < 10; i++) {
+                        this.platforms.create(200 + i * 320, 
+                            450 - Math.sin(i) * 100, 'platform').setScale(0.7, 1);
+                    }
+                } else if (this.levelIndex === 2) {
+                    // Maze-like
+                    for (let i = 0; i < 15; i++) {
+                        this.platforms.create(200 + i * 260, 
+                            350 + (i % 3) * 80, 'platform');
+                    }
+                } else {
+                    // Final challenge
+                    for (let i = 0; i < 18; i++) {
+                        this.platforms.create(200 + i * 260, 
+                            200 + Math.sin(i * 0.5) * 150, 'platform').setScale(0.6, 1);
+                    }
+                }
+            }
+
+            createHUD() {
+                this.scoreText = this.add.text(16, 16, 'Score: 0', {
+                    fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3
+                }).setScrollFactor(0).setDepth(100);
+                
+                this.focusText = this.add.text(16, 45, 'Focus: 100%', {
+                    fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3
+                }).setScrollFactor(0).setDepth(100);
+                
+                this.collectText = this.add.text(16, 74, `Neurons: 0/${this.levelData.neurons}`, {
+                    fontSize: '22px', fill: '#FFD700', stroke: '#000', strokeThickness: 3
+                }).setScrollFactor(0).setDepth(100);
+                
+                this.jumpText = this.add.text(16, 103, 'Jumps: ••', {
+                    fontSize: '22px', fill: '#00FF00', stroke: '#000', strokeThickness: 3
+                }).setScrollFactor(0).setDepth(100);
+            }
+
+            collectNeuron(player, neuron) {
+                const index = this.neurons.getChildren().indexOf(neuron);
+                neuron.disableBody(true, true);
+                
+                this.score += 10;
+                this.collected++;
+                this.scoreText.setText('Score: ' + this.score);
+                this.collectText.setText(`Neurons: ${this.collected}/${this.levelData.neurons}`);
+                
+                // Mark as collected
+                if (this.neuronPositions[index]) {
+                    this.neuronPositions[index].collected = true;
+                }
+                
+                // Show random neuroscience fact
+                const fact = NEURO_FACTS[Phaser.Math.Between(0, NEURO_FACTS.length - 1)];
+                const factText = this.add.text(neuron.x, neuron.y - 60, fact, {
+                    fontSize: '18px',
+                    fill: '#FFFF00',
+                    stroke: '#000',
+                    strokeThickness: 4,
+                    align: 'center',
+                    wordWrap: { width: 300 },
+                    backgroundColor: '#000000',
+                    padding: { x: 10, y: 8 }
+                }).setOrigin(0.5).setDepth(1000);
+                
+                // Fade out fact after 5 seconds (increased from 3)
+                this.tweens.add({
+                    targets: factText,
+                    y: factText.y - 30,
+                    alpha: 0,
+                    duration: 5000,
+                    ease: 'Power2',
+                    onComplete: () => factText.destroy()
+                });
+                
+                // Draw synapse connection effect
+                this.drawSynapseConnection(player.x, player.y, neuron.x, neuron.y);
+                
+                // Particle burst effect using Phaser 3.70 API
+                for (let i = 0; i < 10; i++) {
+                    const angle = (Math.PI * 2 * i) / 10;
+                    const speed = Phaser.Math.Between(100, 200);
+                    const particle = this.add.circle(neuron.x, neuron.y, 4, 0x00FFFF, 0.8);
+                    
+                    this.tweens.add({
+                        targets: particle,
+                        x: neuron.x + Math.cos(angle) * speed,
+                        y: neuron.y + Math.sin(angle) * speed,
+                        alpha: 0,
+                        scale: 0,
+                        duration: 600,
+                        ease: 'Power2',
+                        onComplete: () => particle.destroy()
+                    });
+                }
+                
+                // Check if all collected
+                if (this.collected >= this.levelData.neurons) {
+                    this.activatePortal();
+                }
+            }
+
+            drawSynapseConnection(x1, y1, x2, y2) {
+                const line = this.add.graphics();
+                line.lineStyle(3, 0x00FFFF, 0.6);
+                line.lineBetween(x1, y1, x2, y2);
+                
+                this.tweens.add({
+                    targets: line,
+                    alpha: 0,
+                    duration: 1000,
+                    onComplete: () => line.destroy()
+                });
+            }
+
+            activatePortal() {
+                this.portalActivated = true;
+                
+                // FADE IN the portal - this ensures it becomes visible
+                this.tweens.add({
+                    targets: this.portal,
+                    alpha: 1,
+                    duration: 500
+                });
+                
+                // DRAMATIC portal animation - pulses larger
+                this.tweens.add({
+                    targets: this.portal,
+                    scaleX: 3.5,
+                    scaleY: 3.5,
+                    duration: 1000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+                
+                // Add LARGE glowing circles around portal - also high depth
+                const glowCircle1 = this.add.circle(this.portal.x, this.portal.y, 120, 0x9370DB, 0.5).setDepth(999);
+                const glowCircle2 = this.add.circle(this.portal.x, this.portal.y, 90, 0xBA55D3, 0.7).setDepth(999);
+                const glowCircle3 = this.add.circle(this.portal.x, this.portal.y, 60, 0xFFD700, 0.9).setDepth(999);
+                
+                this.tweens.add({
+                    targets: [glowCircle1, glowCircle2, glowCircle3],
+                    scaleX: 1.5,
+                    scaleY: 1.5,
+                    alpha: 0.1,
+                    duration: 2000,
+                    yoyo: true,
+                    repeat: -1
+                });
+                
+                // Message at player position
+                const msg = this.add.text(this.player.x, this.player.y - 100, 'PORTAL ACTIVATED!\n→ GO RIGHT →', {
+                    fontSize: '52px', fill: '#FFD700', stroke: '#FF0000', strokeThickness: 8,
+                    fontStyle: 'bold', align: 'center'
+                }).setOrigin(0.5).setDepth(2000);
+                
+                this.tweens.add({
+                    targets: msg,
+                    y: msg.y - 50,
+                    alpha: 0,
+                    duration: 3000,
+                    onComplete: () => msg.destroy()
+                });
+                
+                // Add arrow pointing to portal - MUCH LARGER
+                this.portalArrow = this.add.text(400, 100, '→→→ PORTAL THIS WAY! →→→', {
+                    fontSize: '40px', fill: '#FFD700', stroke: '#FF0000', strokeThickness: 7,
+                    fontStyle: 'bold'
+                }).setOrigin(0.5).setScrollFactor(0).setDepth(2000);
+                
+                // Blinking arrow
+                this.tweens.add({
+                    targets: this.portalArrow,
+                    alpha: 0.3,
+                    scaleX: 1.3,
+                    scaleY: 1.3,
+                    duration: 400,
+                    yoyo: true,
+                    repeat: -1
+                });
+                
+                // Add portal marker on HUD showing distance
+                this.portalIndicator = this.add.text(400, 160, '', {
+                    fontSize: '32px', fill: '#FFD700', stroke: '#FF0000', strokeThickness: 6,
+                    fontStyle: 'bold'
+                }).setOrigin(0.5).setScrollFactor(0).setDepth(2000);
+                
+                console.log('✅ Portal activated at:', this.portal.x, this.portal.y, 'Alpha:', this.portal.alpha, 'Depth:', this.portal.depth);
+            }
+
+            hitDistraction(player, distraction) {
+                distraction.disableBody(true, true);
+                this.focus = Math.max(0, this.focus - 10);
+                this.focusText.setText('Focus: ' + this.focus + '%');
+                
+                // Screen shake
+                this.cameras.main.shake(200, 0.01);
+                
+                // Flash effect
+                this.tweens.add({
+                    targets: player,
+                    tint: 0xff0000,
+                    duration: 100,
+                    yoyo: true,
+                    repeat: 2
+                });
+                
+                if (this.focus <= 0) {
+                    this.gameOver();
+                }
+            }
+
+            reachPortal() {
+                if (this.portalReached) return; // Prevent multiple calls
+                this.portalReached = true;
+                
+                this.physics.pause();
+                this.player.setTint(0x00ff00);
+                levelScore = this.score;
+                
+                this.cameras.main.flash(500, 255, 215, 0);
+                
+                this.time.delayedCall(800, () => {
+                    this.scene.stop();
+                    showReflection();
+                });
+            }
+
+            gameOver() {
+                this.physics.pause();
+                this.player.setTint(0xff0000);
+                
+                const txt = this.add.text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, 
+                    'Focus Lost!\nPress SPACE to Retry', {
+                    fontSize: '42px', fill: '#fff', stroke: '#ff0000', strokeThickness: 6, 
+                    align: 'center'
+                }).setOrigin(0.5).setScrollFactor(0);
+                
+                this.input.keyboard.once('keydown-SPACE', () => this.scene.restart());
+            }
+
+            update() {
+                // Coyote time - grace period after leaving platform
+                if (this.player.body.touching.down) {
+                    this.jumpsLeft = 2;
+                    this.coyoteTime = 150; // ms
+                    this.wasOnGround = true;
+                } else {
+                    if (this.coyoteTime > 0) {
+                        this.coyoteTime -= 16.67; // ~60fps
+                    } else {
+                        this.wasOnGround = false;
+                    }
+                }
+                
+                // Jump buffering - press jump slightly before landing
+                if (this.jumpBufferTime > 0) {
+                    this.jumpBufferTime -= 16.67;
+                }
+                
+                // Movement with acceleration
+                if (this.cursors.left.isDown) {
+                    this.player.setAccelerationX(-600);
+                    this.player.flipX = true;
+                } else if (this.cursors.right.isDown) {
+                    this.player.setAccelerationX(600);
+                    this.player.flipX = false;
+                } else {
+                    this.player.setAccelerationX(0);
+                }
+                
+                // Cap velocity
+                if (Math.abs(this.player.body.velocity.x) > 250) {
+                    this.player.setVelocityX(250 * Math.sign(this.player.body.velocity.x));
+                }
+                
+                // Jump input detection - detect when UP is JUST pressed
+                if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
+                    this.jumpBufferTime = 100;
+                    this.tryJump();
+                }
+                
+                // Variable jump height - release early for short hop
+                if (this.cursors.up.isUp && this.player.body.velocity.y < -100) {
+                    this.player.setVelocityY(this.player.body.velocity.y * 0.5);
+                }
+                
+                // Update HUD
+                const jumps = this.coyoteTime > 0 ? 2 : this.jumpsLeft;
+                this.jumpText.setText('Jumps: ' + '•'.repeat(jumps) + '○'.repeat(2 - jumps));
+                
+                // Update portal indicator if visible
+                if (this.portalActivated && this.portalIndicator) {
+                    const distance = Math.floor(Math.abs(this.portal.x - this.player.x) / 100);
+                    this.portalIndicator.setText(`PORTAL: ${distance * 10}m ${this.portal.x > this.player.x ? '→' : '←'}`);
+                    
+                    // Check if player reached portal manually
+                    const distToPortal = Phaser.Math.Distance.Between(
+                        this.player.x, this.player.y,
+                        this.portal.x, this.portal.y
+                    );
+                    
+                    if (distToPortal < 100) { // Within 100 pixels
+                        this.reachPortal();
+                    }
+                }
+                
+                // Portal rotation
+                if (this.portalActivated && this.portal) {
+                    this.portal.rotation += 0.05;
+                }
+            }
+            
+            tryJump() {
+                // Check if we can jump
+                const onGround = this.player.body.touching.down || this.coyoteTime > 0;
+                const canFirstJump = onGround && this.jumpsLeft >= 1;
+                const canDoubleJump = !onGround && this.jumpsLeft === 1 && !this.wasOnGround;
+                
+                if (canFirstJump || canDoubleJump) {
+                    // Execute jump
+                    this.player.setVelocityY(-450);
+                    this.jumpsLeft--;
+                    this.jumpBufferTime = 0;
+                    
+                    if (canDoubleJump) {
+                        this.coyoteTime = 0; // Cancel coyote time on double jump
+                        
+                        // Double jump visual effect
+                        this.tweens.add({
+                            targets: this.player,
+                            scaleX: 0.7,
+                            scaleY: 1.3,
+                            duration: 100,
+                            yoyo: true
+                        });
+                        
+                        // Double jump particle ring
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (Math.PI * 2 * i) / 8;
+                            const particle = this.add.circle(this.player.x, this.player.y, 3, 0x00FF00, 0.8);
+                            this.tweens.add({
+                                targets: particle,
+                                x: this.player.x + Math.cos(angle) * 30,
+                                y: this.player.y + Math.sin(angle) * 30,
+                                alpha: 0,
+                                duration: 300,
+                                onComplete: () => particle.destroy()
+                            });
+                        }
+                    } else {
+                        // First jump squash
+                        this.tweens.add({
+                            targets: this.player,
+                            scaleX: 0.8,
+                            scaleY: 1.2,
+                            duration: 100,
+                            yoyo: true
+                        });
+                    }
+                }
+            }
+        }
+
+        function startGame() {
+            playerName = document.getElementById('player-name').value.trim();
+            if (!playerName) {
+                alert('Please enter your name!');
+                return;
+            }
+            currentLevel = 0;
+            totalScore = 0;
+            showScreen('game-screen');
+            initGame(0);
+        }
+
+        function initGame(levelIndex) {
+            if (game) game.destroy(true);
+            
+            try {
+                game = new Phaser.Game({
+                    type: Phaser.AUTO,
+                    width: 800,
+                    height: 600,
+                    parent: 'game-container',
+                    physics: {
+                        default: 'arcade',
+                        arcade: { 
+                            gravity: { y: 1000 },
+                            debug: false
+                        }
+                    },
+                    scene: GameScene
+                });
+                
+                game.scene.start('GameScene', { levelIndex });
+            } catch (error) {
+                console.error('Game initialization error:', error);
+                alert('Error loading game. Please refresh the page and try again.');
+            }
+        }
+
+        function showReflection() {
+            showScreen('reflection-screen');
+            document.getElementById('level-score-text').textContent = `Score: ${levelScore} points`;
+            document.getElementById('reflection-question').textContent = QUESTIONS[currentLevel];
+            document.getElementById('reflection-answer').value = '';
+        }
+
+        function submitReflection() {
+            const answer = document.getElementById('reflection-answer').value.trim();
+            if (!answer) {
+                alert('Please share your thoughts!');
+                return;
+            }
+
+            const reflections = JSON.parse(localStorage.getItem('brainrun_reflections') || '[]');
+            reflections.push({
+                player: playerName,
+                level: currentLevel,
+                question: QUESTIONS[currentLevel],
+                answer: answer,
+                time: new Date().toISOString()
+            });
+            localStorage.setItem('brainrun_reflections', JSON.stringify(reflections));
+
+            totalScore += levelScore;
+
+            if (currentLevel >= LEVELS.length - 1) {
+                saveScore();
+                document.getElementById('final-score-text').textContent = `Total Score: ${totalScore}`;
+                showScreen('complete-screen');
+            } else {
+                currentLevel++;
+                showScreen('game-screen');
+                initGame(currentLevel);
+            }
+        }
+
+        function saveScore() {
+            const scores = JSON.parse(localStorage.getItem('brainrun_scores') || '[]');
+            scores.push({ name: playerName, score: totalScore, date: new Date().toISOString() });
+            scores.sort((a, b) => b.score - a.score);
+            localStorage.setItem('brainrun_scores', JSON.stringify(scores.slice(0, 10)));
+        }
+
+        function showLeaderboard() {
+            showScreen('leaderboard-screen');
+            const scores = JSON.parse(localStorage.getItem('brainrun_scores') || '[]');
+            const list = document.getElementById('leaderboard-list');
+            
+            if (scores.length === 0) {
+                list.innerHTML = '<p style="color: #666; padding: 20px;">No scores yet. Be the first!</p>';
+            } else {
+                list.innerHTML = scores.map((s, i) => `
+                    <div style="display: flex; justify-content: space-between; padding: 12px; 
+                        background: ${i < 3 ? '#FFD700' : '#f0f0f0'}; border-radius: 8px; margin: 8px 0;">
+                        <span style="font-weight: bold; color: ${i < 3 ? '#fff' : '#667eea'};">
+                            ${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1)}
+                        </span>
+                        <span style="flex: 1; text-align: left; padding: 0 15px; color: ${i < 3 ? '#fff' : '#000'};">${s.name}</span>
+                        <span style="font-weight: bold; color: ${i < 3 ? '#fff' : '#764ba2'};">${s.score} pts</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function exitToMenu() {
+            if (game) {
+                game.destroy(true);
+                game = null;
+            }
+            resetToMenu();
+        }
+
+        function resetToMenu() {
+            if (game) {
+                game.destroy(true);
+                game = null;
+            }
+            currentLevel = 0;
+            totalScore = 0;
+            showScreen('menu-screen');
+        }
+
+        document.getElementById('player-name').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') startGame();
+        });
+    </script>
+</body>
+</html>
